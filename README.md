@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # alignment-risk (template)
 
 A Python package template for pre-training risk diagnostics inspired by
@@ -75,3 +76,5 @@ print(report.curvature)
   and matrix-free eigensolvers.
 - For an MVP, constrain analysis to selected parameter groups via `FisherConfig.parameter_names`.
 - The forecast is a local diagnostic approximation, not a formal safety guarantee.
+=======
+
