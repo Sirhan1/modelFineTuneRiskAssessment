@@ -1,62 +1,41 @@
-<<<<<<< HEAD
-# alignment-risk (template)
+# alignment-risk
 
-A Python package template for pre-training risk diagnostics inspired by
-*The Geometry of Alignment Collapse: When Fine-Tuning Breaks Safety* (arXiv:2602.15799).
+`alignment-risk` is a Python package for pre-flight alignment risk diagnostics during fine-tuning.
+It estimates whether a fine-tuning trajectory is likely to drift into safety-sensitive weight directions.
 
-This template implements an MVP pipeline for the four checks you asked for:
-
-1. **Alignment Sharpness (Low-Rank Sensitivity)**
-   - Estimates a skill-specific Fisher Information Matrix (FIM).
-   - Extracts top Fisher eigenvectors as the alignment-sensitive subspace.
-   - Produces a sensitivity map (module scores + top sensitive weights).
-
-2. **False Sense of Security (Initial Orthogonality)**
-   - Computes overlap / cosine to the sensitive subspace for the initial update.
-   - Emits an `InitialRiskScore` and trigger flag for second-order checks.
-
-3. **Smoke Detector (Curvature Coupling)**
-   - Estimates acceleration term `(∇g)g = H g` using Hessian-vector products.
-   - Computes AIC-inspired coupling score `gamma_hat = ||F^(1/2) P (H g)||`.
-
-4. **Quartic Warning**
-   - Forecasts safety decay from the paper's local form:
-     - Drift lower bound: `||F^(1/2)PΔθ(t)|| ≳ (gamma/2) t^2 - epsilon t`
-     - Quartic asymptote: `Δu(t) ≈ (lambda * gamma^2 / 8) t^4`
-   - Emits `Collapse Predicted at Step X` when threshold is crossed.
-
-## Install
+## Installation
 
 ```bash
-pip install -e .
+pip install alignment-risk
 ```
 
-## Quick start
+For local development on Apple Silicon:
 
-Run the synthetic demo:
+```bash
+make setup
+source .venv/bin/activate
+```
+
+## Quickstart
+
+Run the included synthetic demo:
 
 ```bash
 alignment-risk demo --output-dir artifacts
+alignment-risk demo --mode lora --output-dir artifacts
 ```
 
-This writes:
-
+Generated outputs:
 - `artifacts/sensitivity_map.png`
 - `artifacts/safety_decay_forecast.png`
 
-## Use with your model
-
-You provide:
-
-- a `torch.nn.Module`
-- a safety dataloader + loss function (for FIM of a safety skill)
-- a fine-tuning dataloader + loss function (for update + curvature checks)
+## Python API
 
 ```python
-import torch
 from alignment_risk import AlignmentRiskPipeline, PipelineConfig
 
-pipeline = AlignmentRiskPipeline(PipelineConfig())
+config = PipelineConfig(mode="lora")  # or mode="full"
+pipeline = AlignmentRiskPipeline(config)
 report = pipeline.run(
     model=model,
     safety_dataloader=safety_loader,
@@ -66,15 +45,75 @@ report = pipeline.run(
 )
 
 print(report.warning)
-print(report.initial_risk)
-print(report.curvature)
 ```
 
-## Notes
+## Modes
 
-- This is a **template** implementation; full-scale LLM use needs batching, parameter sharding,
-  and matrix-free eigensolvers.
-- For an MVP, constrain analysis to selected parameter groups via `FisherConfig.parameter_names`.
-- The forecast is a local diagnostic approximation, not a formal safety guarantee.
-=======
+- `full`: analyze all selected trainable parameters (standard full fine-tuning).
+- `lora`: analyze only trainable LoRA adapter parameters (names containing `lora_`, `lora_A`, `lora_B`).
 
+## LoRA mitigation (AlignGuard-style)
+
+After running risk analysis in `mode="lora"`, you can attach a regularizer that adds:
+- Fisher-weighted safety penalty on alignment-sensitive update component,
+- task-stability penalty on the orthogonal component,
+- collision penalties (Riemannian + geodesic) to reduce interference.
+
+```python
+from alignment_risk import AlignmentRiskPipeline, PipelineConfig, AlignGuardConfig
+
+config = PipelineConfig(mode="lora")
+pipeline = AlignmentRiskPipeline(config)
+report = pipeline.run(
+    model=model,
+    safety_dataloader=safety_loader,
+    safety_loss_fn=safety_loss_fn,
+    fine_tune_dataloader=ft_loader,
+    fine_tune_loss_fn=ft_loss_fn,
+)
+
+mitigator = pipeline.build_lora_mitigator(
+    model,
+    report.subspace,
+    config=AlignGuardConfig(lambda_a=0.25, lambda_t=0.5, lambda_nc=0.1, alpha=0.5),
+)
+
+task_loss = ft_loss_fn(model, batch)
+breakdown = mitigator.regularized_loss(task_loss)
+breakdown.total_loss.backward()
+```
+
+Call `mitigator.reset_reference()` when you want to re-anchor regularization to the current adapter state.
+
+## What the package computes
+
+1. Low-rank safety sensitivity from Fisher geometry.
+2. Initial overlap risk (first-order projection into safety subspace).
+3. Curvature coupling risk (second-order directional drift).
+4. Quartic-style stability forecast and collapse-step warning.
+
+## Repository layout
+
+- `src/alignment_risk/`: package source code.
+- `tests/`: test suite.
+- `examples/`: runnable examples.
+- `scripts/`: setup and project automation scripts.
+- `pyproject.toml`: packaging metadata and build config.
+
+## Development commands
+
+```bash
+make test
+make lint
+make typecheck
+make build
+make check-dist
+```
+
+## Publishing workflow (when ready)
+
+1. Bump version in `src/alignment_risk/__about__.py`.
+2. Run quality checks: `make test lint typecheck`.
+3. Build artifacts: `make build`.
+4. Validate artifacts: `make check-dist`.
+5. Upload with Twine to TestPyPI/PyPI.

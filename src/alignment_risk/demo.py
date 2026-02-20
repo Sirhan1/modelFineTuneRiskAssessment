@@ -1,22 +1,50 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal, cast
 
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 from .pipeline import AlignmentRiskPipeline, PipelineConfig
+from .utils import resolve_device
 from .visualization import plot_module_sensitivity, plot_safety_forecast, sensitivity_rows
 
 
-def run_demo(output_dir: str = "artifacts") -> None:
+class ToyLoraLinear(torch.nn.Module):
+    def __init__(self, in_features: int, out_features: int, rank: int = 4) -> None:
+        super().__init__()
+        self.weight = torch.nn.Parameter(torch.randn(out_features, in_features) * 0.05)
+        self.bias = torch.nn.Parameter(torch.zeros(out_features))
+        self.lora_A = torch.nn.Parameter(torch.randn(rank, in_features) * 0.01)
+        self.lora_B = torch.nn.Parameter(torch.randn(out_features, rank) * 0.01)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        base = torch.nn.functional.linear(x, self.weight, self.bias)
+        delta_weight = self.lora_B @ self.lora_A
+        delta = torch.nn.functional.linear(x, delta_weight, None)
+        return base + delta
+
+
+def _set_lora_only_trainable(model: torch.nn.Module) -> None:
+    for name, param in model.named_parameters():
+        if "lora_" in name.lower():
+            param.requires_grad = True
+        else:
+            param.requires_grad = False
+
+
+def run_demo(output_dir: str = "artifacts", *, mode: Literal["full", "lora"] = "full") -> None:
     torch.manual_seed(7)
+    device = resolve_device("auto")
 
     model = torch.nn.Sequential(
-        torch.nn.Linear(16, 32),
+        ToyLoraLinear(16, 32, rank=4),
         torch.nn.Tanh(),
-        torch.nn.Linear(32, 2),
+        ToyLoraLinear(32, 2, rank=2),
     )
+    if mode == "lora":
+        _set_lora_only_trainable(model)
 
     x_safety = torch.randn(64, 16)
     y_safety = (x_safety[:, :4].sum(dim=1) > 0).long()
@@ -28,13 +56,16 @@ def run_demo(output_dir: str = "artifacts") -> None:
     ft_loader = DataLoader(TensorDataset(x_ft, y_ft), batch_size=16, shuffle=False)
 
     def loss_fn(model_: torch.nn.Module, batch: object) -> torch.Tensor:
-        x, y = batch  # type: ignore[misc]
+        x, y = cast(tuple[torch.Tensor, torch.Tensor], batch)
         logits = model_(x)
         return torch.nn.functional.cross_entropy(logits, y)
 
     config = PipelineConfig(
         learning_rate=1e-2,
     )
+    config.mode = mode
+    config.fisher.device = str(device)
+    config.curvature.device = str(device)
     config.fisher.max_parameters = 20_000
     config.fisher.max_samples = 32
     config.fisher.top_rank = 8
@@ -56,6 +87,8 @@ def run_demo(output_dir: str = "artifacts") -> None:
     plot_safety_forecast(report.forecast, out_dir / "safety_decay_forecast.png")
 
     print("=== Alignment Risk Demo ===")
+    print(f"Device: {device}")
+    print(f"Mode: {mode}")
     print(f"Initial overlap cosine: {report.initial_risk.cosine_to_subspace:.4f}")
     print(f"Curvature coupling gamma_hat: {report.curvature.gamma_hat:.4f}")
     print(report.warning)

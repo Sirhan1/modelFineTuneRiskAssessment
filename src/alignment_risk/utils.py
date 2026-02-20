@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, List, Sequence, Tuple
+from typing import Any, List, Literal, Sequence, Tuple
 
 import torch
 
@@ -22,6 +22,45 @@ def named_trainable_parameters(
         names.append(name)
         params.append(param)
     return names, params
+
+
+def select_parameter_names_for_mode(
+    model: torch.nn.Module,
+    *,
+    mode: Literal["full", "lora"],
+    include_names: Sequence[str] | None = None,
+    lora_name_markers: Sequence[str] = ("lora_", "lora_A", "lora_B"),
+    require_lora_match: bool = True,
+) -> List[str]:
+    trainable_names, _ = named_trainable_parameters(model)
+
+    allow = set(include_names) if include_names is not None else None
+    filtered = [name for name in trainable_names if allow is None or name in allow]
+
+    if mode == "full":
+        return filtered
+
+    lora_names = [
+        name for name in filtered if any(marker.lower() in name.lower() for marker in lora_name_markers)
+    ]
+
+    if not lora_names and require_lora_match:
+        raise ValueError(
+            "PipelineConfig.mode='lora' but no trainable LoRA parameters were found. "
+            "Ensure adapters are attached and trainable, or set mode='full'."
+        )
+
+    return lora_names
+
+
+def resolve_device(requested: str | None = "auto") -> torch.device:
+    if requested is None or requested == "auto":
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return torch.device("mps")
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+        return torch.device("cpu")
+    return torch.device(requested)
 
 
 def build_parameter_slices(

@@ -1,5 +1,11 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
 .venv/
 artifacts/
+*.egg-info/
+build/
+dist/
+.DS_Store

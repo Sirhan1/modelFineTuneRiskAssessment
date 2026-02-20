@@ -6,14 +6,14 @@ from typing import Callable, Iterable
 import torch
 
 from .types import CurvatureCouplingResult, SensitivitySubspace
-from .utils import flatten_tensors, move_to_device, named_trainable_parameters
+from .utils import flatten_tensors, move_to_device, named_trainable_parameters, resolve_device
 
 LossFn = Callable[[torch.nn.Module, object], torch.Tensor]
 
 
 @dataclass
 class CurvatureConfig:
-    device: str = "cpu"
+    device: str = "auto"
     max_batches: int = 1
 
 
@@ -30,7 +30,7 @@ class CurvatureCouplingAnalyzer:
         loss_fn: LossFn,
         subspace: SensitivitySubspace,
     ) -> CurvatureCouplingResult:
-        device = torch.device(self.config.device)
+        device = resolve_device(self.config.device)
         model = model.to(device)
 
         selected_names = [p.name for p in subspace.parameter_slices]

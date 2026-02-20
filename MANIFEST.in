@@ -1,0 +1,6 @@
+include README.md
+include LICENSE
+recursive-include src/alignment_risk *.py
+include src/alignment_risk/py.typed
+global-exclude __pycache__
+global-exclude *.py[cod]

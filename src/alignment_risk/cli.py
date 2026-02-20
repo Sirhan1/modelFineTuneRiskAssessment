@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from typing import Literal, cast
 
 from .demo import run_demo
 
@@ -11,6 +12,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     demo = sub.add_parser("demo", help="run a synthetic end-to-end diagnostic")
     demo.add_argument("--output-dir", default="artifacts", help="where to save plots")
+    demo.add_argument(
+        "--mode",
+        default="full",
+        choices=["full", "lora"],
+        help="analysis mode: full fine-tuning weights or LoRA adapter-only weights",
+    )
 
     return parser
 
@@ -21,7 +28,8 @@ def main() -> None:
 
     if args.command in (None, "demo"):
         output_dir = getattr(args, "output_dir", "artifacts")
-        run_demo(output_dir=output_dir)
+        mode = cast(str, getattr(args, "mode", "full"))
+        run_demo(output_dir=output_dir, mode=cast(Literal["full", "lora"], mode))
         return
 
     parser.error(f"Unknown command: {args.command}")

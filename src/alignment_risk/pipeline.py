@@ -1,18 +1,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Literal, Sequence
 
 import torch
 
 from .curvature import CurvatureConfig, CurvatureCouplingAnalyzer
 from .fisher import FisherConfig, FisherSubspaceAnalyzer
 from .forecast import ForecastConfig, forecast_stability
+from .mitigation import AlignGuardConfig, AlignGuardLoRARegularizer
 from .orthogonality import initial_risk_from_update
-from .types import RiskAssessmentReport
-from .utils import flatten_tensors, move_to_device, named_trainable_parameters
+from .types import RiskAssessmentReport, SensitivitySubspace
+from .utils import (
+    flatten_tensors,
+    move_to_device,
+    named_trainable_parameters,
+    resolve_device,
+    select_parameter_names_for_mode,
+)
 
 LossFn = Callable[[torch.nn.Module, object], torch.Tensor]
+PipelineMode = Literal["full", "lora"]
 
 
 @dataclass
@@ -20,6 +28,9 @@ class PipelineConfig:
     fisher: FisherConfig = field(default_factory=FisherConfig)
     curvature: CurvatureConfig = field(default_factory=CurvatureConfig)
     forecast: ForecastConfig = field(default_factory=ForecastConfig)
+    mode: PipelineMode = "full"
+    lora_name_markers: Sequence[str] = ("lora_", "lora_A", "lora_B")
+    require_lora_match: bool = True
     learning_rate: float = 1e-4
     orthogonality_threshold: float = 0.05
 
@@ -38,10 +49,13 @@ class AlignmentRiskPipeline:
         fine_tune_dataloader: Iterable[object],
         fine_tune_loss_fn: LossFn,
     ) -> RiskAssessmentReport:
+        selected_param_names = self._resolve_analysis_parameter_names(model)
+
         subspace = self.fisher_analyzer.analyze(
             model=model,
             dataloader=safety_dataloader,
             loss_fn=safety_loss_fn,
+            parameter_names=selected_param_names,
         )
 
         initial_update = self._estimate_initial_update(
@@ -83,6 +97,36 @@ class AlignmentRiskPipeline:
             warning=warning,
         )
 
+    def build_lora_mitigator(
+        self,
+        model: torch.nn.Module,
+        subspace: SensitivitySubspace,
+        *,
+        config: AlignGuardConfig | None = None,
+    ) -> AlignGuardLoRARegularizer:
+        if self.config.mode != "lora":
+            raise ValueError(
+                "build_lora_mitigator() is intended for PipelineConfig.mode='lora'. "
+                "Switch the pipeline mode or construct AlignGuardLoRARegularizer directly."
+            )
+
+        selected_names = [p.name for p in subspace.parameter_slices]
+        return AlignGuardLoRARegularizer(
+            model,
+            subspace=subspace,
+            parameter_names=selected_names,
+            config=config,
+        )
+
+    def _resolve_analysis_parameter_names(self, model: torch.nn.Module) -> list[str]:
+        return select_parameter_names_for_mode(
+            model=model,
+            mode=self.config.mode,
+            include_names=self.config.fisher.parameter_names,
+            lora_name_markers=self.config.lora_name_markers,
+            require_lora_match=self.config.require_lora_match,
+        )
+
     def _estimate_initial_update(
         self,
         model: torch.nn.Module,
@@ -91,7 +135,7 @@ class AlignmentRiskPipeline:
         selected_names: list[str],
         learning_rate: float,
     ) -> torch.Tensor:
-        device = torch.device(self.config.curvature.device)
+        device = resolve_device(self.config.curvature.device)
         model = model.to(device)
 
         _, params = named_trainable_parameters(model, include_names=selected_names)

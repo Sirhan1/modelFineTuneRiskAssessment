@@ -12,6 +12,7 @@ from .utils import (
     flatten_parameter_grads,
     move_to_device,
     named_trainable_parameters,
+    resolve_device,
     slice_batch,
 )
 
@@ -24,7 +25,7 @@ class FisherConfig:
     max_samples: int = 128
     max_parameters: int = 500_000
     top_weight_count: int = 256
-    device: str = "cpu"
+    device: str = "auto"
     parameter_names: Sequence[str] | None = None
 
 
@@ -39,11 +40,13 @@ class FisherSubspaceAnalyzer:
         model: torch.nn.Module,
         dataloader: Iterable[object],
         loss_fn: LossFn,
+        parameter_names: Sequence[str] | None = None,
     ) -> SensitivitySubspace:
-        device = torch.device(self.config.device)
+        device = resolve_device(self.config.device)
         model = model.to(device)
 
-        names, params = named_trainable_parameters(model, self.config.parameter_names)
+        selected_names = parameter_names if parameter_names is not None else self.config.parameter_names
+        names, params = named_trainable_parameters(model, selected_names)
         if not params:
             raise ValueError("No trainable parameters selected for Fisher analysis.")
 

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,17 +7,36 @@ name = "alignment-risk"
 version = "0.1.0"
 description = "Template toolkit for AIC-based alignment collapse diagnostics"
 readme = "README.md"
-authors = [{name = "Template Author"}]
-requires-python = ">=3.10"
+authors = [{name = "Mohammed Talat"}]
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10,<3.13"
+keywords = ["alignment", "llm", "safety", "fine-tuning", "risk", "fisher"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Operating System :: MacOS :: MacOS X",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
-  "torch>=2.2",
+  "torch>=2.3",
   "numpy>=1.24",
   "matplotlib>=3.8",
 ]
 
 [project.optional-dependencies]
 dev = [
+  "build>=1.2",
+  "twine>=5.1",
   "pytest>=8.0",
+  "pytest-xdist>=3.6",
+  "ruff>=0.8",
+  "mypy>=1.11",
 ]
 
 [project.scripts]
@@ -29,6 +48,24 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+alignment_risk = ["py.typed"]
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = false
