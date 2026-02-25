@@ -1,10 +1,9 @@
-name: Deploy Docs to GitHub Pages
+name: Deploy MkDocs Site
 
 on:
   push:
     branches:
       - main
-      - master
   workflow_dispatch:
 
 permissions:
@@ -33,24 +32,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install mkdocs
 
-      - name: Configure Pages
+      - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Build with MkDocs
+      - name: Build Docs
         run: mkdocs build --strict
 
-      - name: Upload artifact
+      - name: Upload Site Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./site
 
   deploy:
+    needs: build
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    needs: build
-    runs-on: ubuntu-latest
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy Site
         id: deployment
         uses: actions/deploy-pages@v4
