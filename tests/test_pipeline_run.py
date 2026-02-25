@@ -328,6 +328,12 @@ def test_pipeline_rejects_invalid_adaptive_refinement_fraction() -> None:
         pipeline._validate_runtime_config()
 
 
+def test_pipeline_rejects_non_positive_learning_rate() -> None:
+    pipeline = AlignmentRiskPipeline(PipelineConfig(learning_rate=0.0))
+    with pytest.raises(ValueError, match="learning_rate"):
+        pipeline._validate_runtime_config()
+
+
 def test_pipeline_lora_non_strict_returns_skipped_report_when_no_lora_params() -> None:
     model = _TinyClassifier()
     cfg = PipelineConfig(mode="lora", require_lora_match=False)

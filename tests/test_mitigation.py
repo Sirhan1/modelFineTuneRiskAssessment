@@ -110,3 +110,28 @@ def test_pipeline_build_lora_mitigator() -> None:
     pipeline = AlignmentRiskPipeline(PipelineConfig(mode="lora"))
     mitigator = pipeline.build_lora_mitigator(model, subspace)
     assert isinstance(mitigator, AlignGuardLoRARegularizer)
+
+
+@pytest.mark.parametrize(
+    ("cfg", "match"),
+    [
+        (AlignGuardConfig(lambda_a=-0.1), "lambda_a"),
+        (AlignGuardConfig(alpha=1.1), "alpha"),
+        (AlignGuardConfig(epsilon=0.0), "epsilon"),
+    ],
+)
+def test_alignguard_rejects_invalid_hyperparameters(
+    cfg: AlignGuardConfig,
+    match: str,
+) -> None:
+    model = _TinyLoraModel()
+    selected = ["lora_A", "lora_B"]
+    subspace = _toy_subspace(model, selected)
+
+    with pytest.raises(ValueError, match=match):
+        AlignGuardLoRARegularizer(
+            model,
+            subspace=subspace,
+            parameter_names=selected,
+            config=cfg,
+        )

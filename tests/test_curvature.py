@@ -69,3 +69,38 @@ def test_curvature_handles_mixed_precision_subspace_projection() -> None:
     out = analyzer.analyze(model, dataloader=[None], loss_fn=loss_fn, subspace=subspace)
     assert out.epsilon_hat == pytest.approx(5.0, rel=1e-3, abs=1e-3)
     assert out.gamma_hat == pytest.approx(5.0, rel=1e-3, abs=1e-3)
+
+
+def test_curvature_mean_loss_is_sample_weighted_across_variable_batch_sizes() -> None:
+    class _ScalarModel(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.w = torch.nn.Parameter(torch.tensor([1.0]))
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            return x * self.w
+
+    model = _ScalarModel()
+    analyzer = CurvatureCouplingAnalyzer(CurvatureConfig(max_batches=10, device="cpu"))
+
+    batch_large = (torch.ones(4, 1), torch.zeros(4, 1))
+    batch_small = (torch.full((1, 1), 10.0), torch.zeros(1, 1))
+
+    def loss_fn(model_: torch.nn.Module, batch: object) -> torch.Tensor:
+        x, y = batch  # type: ignore[misc]
+        pred = model_(x)
+        return ((pred - y) ** 2).mean()
+
+    mean_loss = analyzer._mean_loss(
+        model,
+        dataloader=[batch_large, batch_small],
+        loss_fn=loss_fn,
+        device=torch.device("cpu"),
+        max_batches=10,
+    )
+
+    x_all = torch.cat([batch_large[0], batch_small[0]], dim=0)
+    y_all = torch.cat([batch_large[1], batch_small[1]], dim=0)
+    expected = loss_fn(model, (x_all, y_all))
+
+    assert float(mean_loss.item()) == pytest.approx(float(expected.item()), rel=1e-6, abs=1e-6)

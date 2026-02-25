@@ -335,6 +335,16 @@ class AlignmentRiskPipeline:
         model.to(original_device)
 
     def _validate_runtime_config(self) -> None:
+        if not np.isfinite(self.config.learning_rate) or self.config.learning_rate <= 0.0:
+            raise ValueError("PipelineConfig.learning_rate must be finite and > 0.")
+        if not (0.0 <= self.config.orthogonality_threshold <= 1.0):
+            raise ValueError("PipelineConfig.orthogonality_threshold must be in [0, 1].")
+        if (
+            not np.isfinite(self.config.trust_region_warning_ratio)
+            or self.config.trust_region_warning_ratio <= 0.0
+        ):
+            raise ValueError("PipelineConfig.trust_region_warning_ratio must be finite and > 0.")
+
         frac = self.config.adaptive_curvature_trigger_fraction
         if not (0.0 < frac <= 1.0):
             raise ValueError(

@@ -152,11 +152,16 @@ where $\tau_{\mathrm{orth}}$ corresponds to `orthogonality_threshold`.
 
 ## 6. Curvature Coupling
 
-Average fine-tuning loss over up to `max_batches`:
+Sample-weighted mean fine-tuning loss over up to `max_batches`:
 
 $$
-L_f(\theta)=\frac{1}{N_b}\sum_{b=1}^{N_b}\ell_f(\theta; b)
+L_f(\theta)=
+\frac{\sum_{b=1}^{N_b} n_b\,\bar{\ell}_f(\theta; b)}
+{\sum_{b=1}^{N_b} n_b}
 $$
+
+where $\bar{\ell}_f(\theta; b)$ is the mean loss of batch $b$ and $n_b$ is that
+batch's sample count.
 
 Then:
 

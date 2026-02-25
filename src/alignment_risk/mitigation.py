@@ -10,6 +10,7 @@ See docs/SOURCES.md for section/page-level mapping to this module.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 from typing import Literal, Sequence, cast
 
 import torch
@@ -43,6 +44,24 @@ class AlignGuardLossBreakdown:
     collision_geodesic: torch.Tensor
     collision_penalty: torch.Tensor
     total_loss: torch.Tensor
+
+
+def _validate_alignguard_config(cfg: AlignGuardConfig) -> None:
+    nonnegative_scalars = {
+        "lambda_a": cfg.lambda_a,
+        "lambda_t": cfg.lambda_t,
+        "lambda_nc": cfg.lambda_nc,
+        "beta": cfg.beta,
+        "tau": cfg.tau,
+    }
+    for name, value in nonnegative_scalars.items():
+        if not isfinite(value) or value < 0.0:
+            raise ValueError(f"AlignGuardConfig.{name} must be finite and >= 0.")
+
+    if not isfinite(cfg.alpha) or not (0.0 <= cfg.alpha <= 1.0):
+        raise ValueError("AlignGuardConfig.alpha must be finite and in [0, 1].")
+    if not isfinite(cfg.epsilon) or cfg.epsilon <= 0.0:
+        raise ValueError("AlignGuardConfig.epsilon must be finite and > 0.")
 
 
 def project_onto_subspace(vector: torch.Tensor, basis: torch.Tensor) -> torch.Tensor:
@@ -107,6 +126,7 @@ class AlignGuardLoRARegularizer:
         custom_h_diagonal: torch.Tensor | None = None,
     ):
         self.config = config or AlignGuardConfig()
+        _validate_alignguard_config(self.config)
 
         names, params = named_trainable_parameters(model, include_names=parameter_names)
         if not params:

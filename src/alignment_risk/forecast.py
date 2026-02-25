@@ -31,6 +31,23 @@ def _validate_forecast_config(cfg: ForecastConfig) -> None:
         raise ValueError("ForecastConfig.collapse_loss_threshold must be >= 0.")
 
 
+def _validate_forecast_inputs(lambda_min: float, gamma: float, epsilon: float) -> None:
+    values = {
+        "lambda_min": lambda_min,
+        "gamma": gamma,
+        "epsilon": epsilon,
+    }
+    for name, value in values.items():
+        if not np.isfinite(value):
+            raise ValueError(f"{name} must be finite.")
+    if lambda_min < 0.0:
+        raise ValueError("lambda_min must be >= 0.")
+    if gamma < 0.0:
+        raise ValueError("gamma must be >= 0.")
+    if epsilon < 0.0:
+        raise ValueError("epsilon must be >= 0.")
+
+
 def forecast_stability(
     lambda_min: float,
     gamma: float,
@@ -46,6 +63,7 @@ def forecast_stability(
     """
     cfg = config or ForecastConfig()
     _validate_forecast_config(cfg)
+    _validate_forecast_inputs(lambda_min=lambda_min, gamma=gamma, epsilon=epsilon)
 
     steps = np.arange(cfg.max_steps + 1, dtype=int)
     times = steps.astype(float) * cfg.step_size

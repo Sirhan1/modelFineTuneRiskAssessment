@@ -43,3 +43,31 @@ def test_forecast_exposes_physical_time_axis_from_step_size() -> None:
     assert np.allclose(out.times, out.steps.astype(float) * cfg.step_size)
     if out.collapse_step is not None:
         assert out.collapse_time == pytest.approx(float(out.times[out.collapse_step]))
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({"lambda_min": -1.0, "gamma": 0.1, "epsilon": 0.0}, "lambda_min"),
+        ({"lambda_min": 1.0, "gamma": -0.1, "epsilon": 0.0}, "gamma"),
+        ({"lambda_min": 1.0, "gamma": 0.1, "epsilon": -0.1}, "epsilon"),
+    ],
+)
+def test_forecast_rejects_negative_physical_coefficients(kwargs: dict[str, float], match: str) -> None:
+    with pytest.raises(ValueError, match=match):
+        forecast_stability(
+            lambda_min=kwargs["lambda_min"],
+            gamma=kwargs["gamma"],
+            epsilon=kwargs["epsilon"],
+            config=ForecastConfig(max_steps=10, step_size=1.0, collapse_loss_threshold=0.1),
+        )
+
+
+def test_forecast_rejects_nonfinite_coefficients() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        forecast_stability(
+            lambda_min=float("nan"),
+            gamma=0.1,
+            epsilon=0.1,
+            config=ForecastConfig(max_steps=10, step_size=1.0, collapse_loss_threshold=0.1),
+        )

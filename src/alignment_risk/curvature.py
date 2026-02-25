@@ -14,7 +14,13 @@ from typing import Callable, Iterable
 import torch
 
 from .types import CurvatureCouplingResult, SensitivitySubspace
-from .utils import flatten_tensors, move_to_device, named_trainable_parameters, resolve_device
+from .utils import (
+    batch_size,
+    flatten_tensors,
+    move_to_device,
+    named_trainable_parameters,
+    resolve_device,
+)
 
 LossFn = Callable[[torch.nn.Module, object], torch.Tensor]
 
@@ -98,18 +104,26 @@ class CurvatureCouplingAnalyzer:
         max_batches: int,
     ) -> torch.Tensor:
         total = None
-        count = 0
+        total_weight = 0
         for i, batch in enumerate(dataloader):
             if i >= max_batches:
                 break
             batch = move_to_device(batch, device)
             loss = loss_fn(model, batch)
+            try:
+                weight = batch_size(batch)
+            except ValueError:
+                # Synthetic/test iterables may provide metadata-only batches.
+                weight = int(loss.shape[0]) if loss.ndim > 0 and loss.shape[0] > 0 else 1
+            if weight <= 0:
+                raise ValueError("Fine-tuning batch size must be positive.")
             if loss.ndim > 0:
                 loss = loss.mean()
-            total = loss if total is None else total + loss
-            count += 1
+            weighted_loss = loss * float(weight)
+            total = weighted_loss if total is None else total + weighted_loss
+            total_weight += weight
 
-        if count == 0 or total is None:
+        if total_weight == 0 or total is None:
             raise ValueError("Fine-tuning dataloader yielded no batches.")
 
-        return total / float(count)
+        return total / float(total_weight)
