@@ -139,12 +139,12 @@ The pipeline now enables several mitigations by default without requiring extra 
 
 ## Theory sources
 
-This implementation is sourced from two papers:
+This implementation is grounded in the following primary references:
 
-- *The Geometry of Alignment Collapse: When Fine-Tuning Breaks Safety* (arXiv:2602.15799v1).
-- *AlignGuard-LoRA: Alignment-Preserving Fine-Tuning via Fisher-Guided Decomposition and Riemannian-Geodesic Collision Regularization* (arXiv:2508.02079v1).
+- **[AIC-2026]** Springer, Max, et al. (2026). *The Geometry of Alignment Collapse: When Fine-Tuning Breaks Safety*. arXiv:2602.15799v1. PDF: [https://arxiv.org/pdf/2602.15799](https://arxiv.org/pdf/2602.15799)
+- **[ALIGNGUARD-2025]** Das, Amitava, et al. (2025). *AlignGuard-LoRA: Alignment-Preserving Fine-Tuning via Fisher-Guided Decomposition and Riemannian-Geodesic Collision Regularization*. arXiv:2508.02079v1. PDF: [https://arxiv.org/pdf/2508.02079](https://arxiv.org/pdf/2508.02079)
 
-See `docs/SOURCES.md` for a module-by-module mapping from repository code to paper sections/pages.
+See `docs/SOURCES.md` for module-by-module mapping from repository code to sections/pages in these papers.
 
 ## Repository layout
 
@@ -171,6 +171,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution workflow details.
 
 - `CONTRIBUTING.md`: local dev and contribution checklist.
 - `docs/PUBLISHING.md`: release and publishing guide.
+- `docs/CITATIONS.md`: canonical references and starter BibTeX entries.
 - `docs/SOURCES.md`: source-to-paper mapping and derivation notes.
 
 ## Publishing workflow (when ready)

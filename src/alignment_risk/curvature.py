@@ -1,3 +1,11 @@
+"""Curvature coupling diagnostics for alignment risk.
+
+Academic grounding:
+- [AIC-2026] https://arxiv.org/pdf/2602.15799
+
+See docs/SOURCES.md for section/page-level mapping to this module.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

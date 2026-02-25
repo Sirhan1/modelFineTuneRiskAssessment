@@ -1,3 +1,12 @@
+"""End-to-end orchestration of AIC diagnostics and optional LoRA mitigation.
+
+Academic grounding:
+- [AIC-2026] https://arxiv.org/pdf/2602.15799
+- [ALIGNGUARD-2025] https://arxiv.org/pdf/2508.02079
+
+See docs/SOURCES.md for section/page-level mapping to this module.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
