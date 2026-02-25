@@ -79,11 +79,12 @@ $$
 Module score for module $M$:
 
 $$
-\text{module\_score}(M) =
+s_M =
 \frac{1}{|J_M|}\sum_{j \in J_M}\operatorname{diag}(F)_j
 $$
 
-where $J_M$ are flattened parameter indices for that module prefix.
+where $J_M$ are flattened parameter indices for that module prefix, and
+$s_M$ corresponds to `module_score(M)` in code.
 
 Top sensitive weights are the top-`k` entries of $\operatorname{diag}(F)$.
 
@@ -135,7 +136,7 @@ P_M(\Delta\theta_0)=BB^\top \Delta\theta_0
 $$
 
 $$
-\text{projected\_ratio}=
+r_{\mathrm{proj}}=
 \frac{\|P_M(\Delta\theta_0)\|_2}{\|\Delta\theta_0\|_2+\varepsilon}
 $$
 
@@ -144,8 +145,10 @@ with $\varepsilon=10^{-12}$ for numerical safety and clamped to $[0,1]$.
 `trigger_curvature_check` is true when:
 
 $$
-\text{projected\_ratio} \le \text{orthogonality\_threshold}
+r_{\mathrm{proj}} \le \tau_{\mathrm{orth}}
 $$
+
+where $\tau_{\mathrm{orth}}$ corresponds to `orthogonality_threshold`.
 
 ## 6. Curvature Coupling
 
@@ -213,8 +216,10 @@ $$
 Collapse step is the first index where:
 
 $$
-\widehat{\Delta u}(t)\ge \text{collapse\_loss\_threshold}
+\widehat{\Delta u}(t)\ge L_{\mathrm{collapse}}
 $$
+
+where $L_{\mathrm{collapse}}$ corresponds to `collapse_loss_threshold`.
 
 ## 8. Adaptive Curvature Refinement Logic
 
@@ -223,22 +228,28 @@ If enabled and `adaptive_curvature_max_batches > curvature.max_batches`:
 - If no collapse yet, refine when terminal estimated loss exceeds:
 
 $$
-\text{collapse\_loss\_threshold}\times
-\text{adaptive\_curvature\_trigger\_fraction}
+L_{\mathrm{collapse}} \times \phi_{\mathrm{refine}}
 $$
 
 - If collapse exists, refine when collapse index is late in horizon:
 
 $$
-\text{collapse\_step}\ge
-\text{max\_steps}\times\text{adaptive\_curvature\_trigger\_fraction}
+s_{\mathrm{collapse}}\ge s_{\max}\times\phi_{\mathrm{refine}}
 $$
 
 Refinement reruns curvature with:
 
 $$
-\max(\text{curvature.max\_batches}+1,\;\text{adaptive\_curvature\_max\_batches})
+\max(b_{\mathrm{curv}}+1,\;b_{\mathrm{adapt}})
 $$
+
+where:
+- $L_{\mathrm{collapse}}$ is `collapse_loss_threshold`.
+- $\phi_{\mathrm{refine}}$ is `adaptive_curvature_trigger_fraction`.
+- $s_{\mathrm{collapse}}$ is `collapse_step`.
+- $s_{\max}$ is `max_steps`.
+- $b_{\mathrm{curv}}$ is `curvature.max_batches`.
+- $b_{\mathrm{adapt}}$ is `adaptive_curvature_max_batches`.
 
 ## 9. Trust-Region Warning Logic
 
