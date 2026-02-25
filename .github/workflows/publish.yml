@@ -24,10 +24,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install build and check tooling
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install build twine
+          pip install -e ".[dev]"
 
       - name: Verify tag and package versions match
         run: |
@@ -63,10 +63,19 @@ jobs:
           print(f"Version check passed: {project_version}")
           PY
 
-      - name: Build distributions
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Run lint
+        run: python -m ruff check src tests examples
+
+      - name: Run typecheck
+        run: python -m mypy src/alignment_risk
+
+      - name: Build package
         run: python -m build
 
-      - name: Check distributions
+      - name: Check package metadata
         run: python -m twine check dist/*
 
       - name: Upload distribution artifacts
