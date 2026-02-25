@@ -6,7 +6,7 @@ repo_name: Sirhan1/modelFineTuneRiskAssessment
 docs_dir: docs
 
 theme:
-  name: mkdocs
+  name: material
 
 nav:
   - Home: index.md
@@ -14,3 +14,15 @@ nav:
   - Source Mapping: SOURCES.md
   - Citations: CITATIONS.md
   - Publishing: PUBLISHING.md
+
+markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - toc:
+      permalink: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
