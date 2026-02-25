@@ -133,7 +133,7 @@ class AlignmentRiskPipeline:
                 forecast.projected_drift.max()
                 / max(initial_risk.update_norm, 1e-12)
             )
-            local_validity_warning = trust_ratio > self.config.trust_region_warning_ratio
+            local_validity_warning = trust_ratio >= self.config.trust_region_warning_ratio
             warning = self._build_warning(
                 forecast.collapse_step,
                 initial_risk.trigger_curvature_check,

@@ -133,6 +133,78 @@ def test_pipeline_forecast_uses_lr_scaled_curvature_terms(monkeypatch: pytest.Mo
     assert captured["gamma"] == pytest.approx((0.2**2) * 7.0, rel=1e-6, abs=1e-6)
 
 
+def test_pipeline_trust_region_warning_triggers_at_threshold(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = _TinyClassifier()
+    cfg = PipelineConfig(mode="full", learning_rate=0.1, trust_region_warning_ratio=1.0)
+    pipeline = AlignmentRiskPipeline(cfg)
+
+    subspace = SensitivitySubspace(
+        parameter_slices=[ParameterSlice(name="linear.weight", start=0, end=2, shape=(2,))],
+        fisher_eigenvalues=torch.tensor([2.0, 1.0]),
+        fisher_eigenvectors=torch.eye(2),
+        fisher_diagonal=torch.tensor([2.0, 1.0]),
+        module_scores={"linear.weight": 1.5},
+        top_weight_indices=torch.tensor([0, 1]),
+        top_weight_scores=torch.tensor([2.0, 1.0]),
+    )
+
+    class _FisherStub:
+        def analyze(self, **kwargs: object) -> SensitivitySubspace:
+            _ = kwargs
+            return subspace
+
+    class _CurvatureStub:
+        def analyze(self, **kwargs: object) -> CurvatureCouplingResult:
+            _ = kwargs
+            return CurvatureCouplingResult(
+                gamma_hat=0.0,
+                epsilon_hat=0.0,
+                acceleration_norm=0.0,
+                projected_acceleration_norm=0.0,
+            )
+
+    def _fake_forecast(
+        lambda_min: float,
+        gamma: float,
+        epsilon: float,
+        config: object,
+    ) -> SafetyForecast:
+        _ = lambda_min
+        _ = gamma
+        _ = epsilon
+        _ = config
+        return SafetyForecast(
+            steps=np.array([0.0, 1.0]),
+            times=np.array([0.0, 1.0]),
+            projected_drift=np.array([0.0, 2.0]),
+            quartic_lower_bound=np.array([0.0, 0.0]),
+            estimated_loss=np.array([0.0, 0.0]),
+            collapse_step=None,
+            collapse_time=None,
+        )
+
+    pipeline.fisher_analyzer = _FisherStub()  # type: ignore[assignment]
+    pipeline.curvature_analyzer = _CurvatureStub()  # type: ignore[assignment]
+    monkeypatch.setattr("alignment_risk.pipeline.forecast_stability", _fake_forecast)
+    monkeypatch.setattr(
+        pipeline,
+        "_estimate_initial_update",
+        lambda *args, **kwargs: torch.tensor([2.0, 0.0]),
+    )
+
+    report = pipeline.run(
+        model=model,
+        safety_dataloader=[],
+        safety_loss_fn=lambda m, b: torch.tensor(0.0),
+        fine_tune_dataloader=[None],
+        fine_tune_loss_fn=lambda m, b: torch.tensor(0.0),
+    )
+
+    assert "local quadratic approximation may be less reliable" in report.warning
+
+
 def test_pipeline_adaptive_curvature_refinement_can_override_borderline_estimate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
