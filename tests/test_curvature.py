@@ -104,3 +104,41 @@ def test_curvature_mean_loss_is_sample_weighted_across_variable_batch_sizes() ->
     expected = loss_fn(model, (x_all, y_all))
 
     assert float(mean_loss.item()) == pytest.approx(float(expected.item()), rel=1e-6, abs=1e-6)
+
+
+def test_curvature_respects_subspace_parameter_order() -> None:
+    class _TwoParamModel(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.a = torch.nn.Parameter(torch.tensor([1.0]))
+            self.b = torch.nn.Parameter(torch.tensor([2.0]))
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            return x
+
+    model = _TwoParamModel()
+    # Intentionally reverse order relative to model.named_parameters().
+    subspace = SensitivitySubspace(
+        parameter_slices=[
+            ParameterSlice(name="b", start=0, end=1, shape=(1,)),
+            ParameterSlice(name="a", start=1, end=2, shape=(1,)),
+        ],
+        fisher_eigenvalues=torch.tensor([4.0, 1.0]),
+        fisher_eigenvectors=torch.eye(2),
+        fisher_diagonal=torch.tensor([4.0, 1.0]),
+        module_scores={"b": 4.0, "a": 1.0},
+        top_weight_indices=torch.tensor([0, 1]),
+        top_weight_scores=torch.tensor([4.0, 1.0]),
+    )
+
+    analyzer = CurvatureCouplingAnalyzer(CurvatureConfig(max_batches=1, device="cpu"))
+
+    def loss_fn(model_: torch.nn.Module, batch: object) -> torch.Tensor:
+        _ = batch
+        # g = [d/da, d/db] = [10a, b] = [10, 2]
+        return 0.5 * (10.0 * (model_.a**2).sum() + (model_.b**2).sum())
+
+    out = analyzer.analyze(model, dataloader=[None], loss_fn=loss_fn, subspace=subspace)
+    # Subspace order is [b, a], so weighted norm is sqrt(4*2^2 + 1*10^2).
+    expected = (4.0 * (2.0**2) + 1.0 * (10.0**2)) ** 0.5
+    assert out.epsilon_hat == pytest.approx(expected, rel=1e-6, abs=1e-6)

@@ -232,7 +232,11 @@ class AlignmentRiskPipeline:
         device = resolve_device(self.config.curvature.device)
         model = model.to(device)
 
-        _, params = named_trainable_parameters(model, include_names=selected_names)
+        _, params = named_trainable_parameters(
+            model,
+            include_names=selected_names,
+            strict=True,
+        )
         if not params:
             raise ValueError("No matching trainable parameters found for update estimate.")
 
@@ -344,6 +348,12 @@ class AlignmentRiskPipeline:
             or self.config.trust_region_warning_ratio <= 0.0
         ):
             raise ValueError("PipelineConfig.trust_region_warning_ratio must be finite and > 0.")
+        if self.config.forecast.max_steps < 0:
+            raise ValueError("ForecastConfig.max_steps must be >= 0.")
+        if self.config.forecast.step_size <= 0.0:
+            raise ValueError("ForecastConfig.step_size must be > 0.")
+        if self.config.forecast.collapse_loss_threshold < 0.0:
+            raise ValueError("ForecastConfig.collapse_loss_threshold must be >= 0.")
 
         frac = self.config.adaptive_curvature_trigger_fraction
         if not (0.0 < frac <= 1.0):

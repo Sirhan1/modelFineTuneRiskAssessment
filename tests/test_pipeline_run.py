@@ -334,6 +334,21 @@ def test_pipeline_rejects_non_positive_learning_rate() -> None:
         pipeline._validate_runtime_config()
 
 
+def test_pipeline_skipped_lora_path_still_validates_forecast_config() -> None:
+    model = _TinyClassifier()
+    cfg = PipelineConfig(mode="lora", require_lora_match=False)
+    cfg.forecast.step_size = 0.0
+
+    with pytest.raises(ValueError, match="step_size"):
+        AlignmentRiskPipeline(cfg).run(
+            model=model,
+            safety_dataloader=[],
+            safety_loss_fn=lambda m, b: torch.tensor(0.0),
+            fine_tune_dataloader=[],
+            fine_tune_loss_fn=lambda m, b: torch.tensor(0.0),
+        )
+
+
 def test_pipeline_lora_non_strict_returns_skipped_report_when_no_lora_params() -> None:
     model = _TinyClassifier()
     cfg = PipelineConfig(mode="lora", require_lora_match=False)

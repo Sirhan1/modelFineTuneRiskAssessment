@@ -135,7 +135,11 @@ class FisherSubspaceAnalyzer:
         model = model.to(device)
 
         selected_names = parameter_names if parameter_names is not None else self.config.parameter_names
-        names, params = named_trainable_parameters(model, selected_names)
+        names, params = named_trainable_parameters(
+            model,
+            selected_names,
+            strict=selected_names is not None,
+        )
         if not params:
             raise ValueError("No trainable parameters selected for Fisher analysis.")
 

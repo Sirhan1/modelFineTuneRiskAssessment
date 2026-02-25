@@ -34,7 +34,10 @@ allowlist:
 
 - `full` mode: use all selected trainable parameters.
 - `lora` mode:
-  - if `fisher.parameter_names` is provided, that allowlist is trusted directly;
+  - if `fisher.parameter_names` is provided, that allowlist is used directly in
+    the caller-provided order;
+  - explicit allowlists are validated strictly: unknown, non-trainable, or
+    duplicate names raise;
   - otherwise names are filtered by markers (`lora_`, `lora_A`, `lora_B`);
   - if no LoRA match and `require_lora_match=True`, raise.
   - if no LoRA match and `require_lora_match=False`, return a skipped report.

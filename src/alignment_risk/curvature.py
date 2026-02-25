@@ -52,7 +52,11 @@ class CurvatureCouplingAnalyzer:
         max_batches = max_batches_override if max_batches_override is not None else self.config.max_batches
 
         selected_names = [p.name for p in subspace.parameter_slices]
-        _, params = named_trainable_parameters(model, include_names=selected_names)
+        _, params = named_trainable_parameters(
+            model,
+            include_names=selected_names,
+            strict=True,
+        )
         if not params:
             raise ValueError("No trainable parameters found for curvature analysis.")
 

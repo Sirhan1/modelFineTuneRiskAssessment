@@ -10,17 +10,53 @@ from .types import ParameterSlice
 def named_trainable_parameters(
     model: torch.nn.Module,
     include_names: Sequence[str] | None = None,
+    *,
+    strict: bool = False,
 ) -> Tuple[List[str], List[torch.nn.Parameter]]:
-    allow = set(include_names) if include_names is not None else None
+    all_named = dict(model.named_parameters())
+    trainable_named = {
+        name: param
+        for name, param in all_named.items()
+        if param.requires_grad
+    }
+    if include_names is None:
+        return list(trainable_named.keys()), list(trainable_named.values())
+
     names: List[str] = []
     params: List[torch.nn.Parameter] = []
-    for name, param in model.named_parameters():
+    seen: set[str] = set()
+    missing: List[str] = []
+    non_trainable: List[str] = []
+    duplicates: List[str] = []
+
+    for name in include_names:
+        if name in seen:
+            duplicates.append(name)
+            continue
+        seen.add(name)
+
+        param = all_named.get(name)
+        if param is None:
+            missing.append(name)
+            continue
         if not param.requires_grad:
+            non_trainable.append(name)
             continue
-        if allow is not None and name not in allow:
-            continue
+
         names.append(name)
         params.append(param)
+
+    if strict and (missing or non_trainable or duplicates):
+        parts: List[str] = []
+        if missing:
+            parts.append(f"missing names: {missing}")
+        if non_trainable:
+            parts.append(f"non-trainable names: {non_trainable}")
+        if duplicates:
+            parts.append(f"duplicate names: {duplicates}")
+        detail = "; ".join(parts)
+        raise ValueError(f"Invalid include_names: {detail}.")
+
     return names, params
 
 
@@ -32,10 +68,14 @@ def select_parameter_names_for_mode(
     lora_name_markers: Sequence[str] = ("lora_", "lora_A", "lora_B"),
     require_lora_match: bool = True,
 ) -> List[str]:
-    trainable_names, _ = named_trainable_parameters(model)
-
-    allow = set(include_names) if include_names is not None else None
-    filtered = [name for name in trainable_names if allow is None or name in allow]
+    if include_names is None:
+        filtered, _ = named_trainable_parameters(model)
+    else:
+        filtered, _ = named_trainable_parameters(
+            model,
+            include_names=include_names,
+            strict=True,
+        )
 
     if mode == "full":
         return filtered

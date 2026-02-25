@@ -1,7 +1,20 @@
 import pytest
 import torch
 
-from alignment_risk.utils import batch_size, flatten_tensors, slice_batch
+from alignment_risk.utils import (
+    batch_size,
+    flatten_tensors,
+    named_trainable_parameters,
+    slice_batch,
+)
+
+
+class _NamedParamsModel(torch.nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.a = torch.nn.Parameter(torch.tensor([1.0]))
+        self.b = torch.nn.Parameter(torch.tensor([2.0]))
+        self.c = torch.nn.Parameter(torch.tensor([3.0]), requires_grad=False)
 
 
 def test_batch_size_dict_skips_non_tensor_metadata_values() -> None:
@@ -58,3 +71,35 @@ def test_slice_batch_keeps_scalar_tensor_metadata_in_sequence() -> None:
     item = slice_batch(batch, 1)
     assert item[0].shape == torch.Size([])
     assert item[1].shape[0] == 1
+
+
+def test_named_trainable_parameters_preserves_explicit_order() -> None:
+    model = _NamedParamsModel()
+    names, params = named_trainable_parameters(
+        model,
+        include_names=["b", "a"],
+        strict=True,
+    )
+    assert names == ["b", "a"]
+    assert params[0] is model.b
+    assert params[1] is model.a
+
+
+def test_named_trainable_parameters_strict_rejects_missing_names() -> None:
+    model = _NamedParamsModel()
+    with pytest.raises(ValueError, match="missing names"):
+        named_trainable_parameters(
+            model,
+            include_names=["a", "missing_param"],
+            strict=True,
+        )
+
+
+def test_named_trainable_parameters_strict_rejects_non_trainable_names() -> None:
+    model = _NamedParamsModel()
+    with pytest.raises(ValueError, match="non-trainable names"):
+        named_trainable_parameters(
+            model,
+            include_names=["c"],
+            strict=True,
+        )

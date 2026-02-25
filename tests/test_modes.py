@@ -54,3 +54,13 @@ def test_lora_mode_respects_explicit_allowlist_without_name_markers() -> None:
         require_lora_match=True,
     )
     assert names == ["base.weight"]
+
+
+def test_explicit_allowlist_rejects_unknown_names() -> None:
+    model = _ModelWithLora()
+    with pytest.raises(ValueError, match="missing names"):
+        select_parameter_names_for_mode(
+            model,
+            mode="full",
+            include_names=["base.weight", "does_not_exist"],
+        )

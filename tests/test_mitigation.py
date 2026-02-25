@@ -3,7 +3,7 @@ import torch
 
 from alignment_risk.mitigation import AlignGuardConfig, AlignGuardLoRARegularizer, decompose_update
 from alignment_risk.pipeline import AlignmentRiskPipeline, PipelineConfig
-from alignment_risk.types import SensitivitySubspace
+from alignment_risk.types import ParameterSlice, SensitivitySubspace
 from alignment_risk.utils import build_parameter_slices, named_trainable_parameters
 
 
@@ -135,3 +135,39 @@ def test_alignguard_rejects_invalid_hyperparameters(
             parameter_names=selected,
             config=cfg,
         )
+
+
+def test_alignguard_respects_subspace_parameter_order() -> None:
+    class _OrderModel(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.a = torch.nn.Parameter(torch.tensor([0.0]))
+            self.b = torch.nn.Parameter(torch.tensor([0.0]))
+
+    model = _OrderModel()
+    # Subspace expects flattened order [b, a].
+    subspace = SensitivitySubspace(
+        parameter_slices=[
+            ParameterSlice(name="b", start=0, end=1, shape=(1,)),
+            ParameterSlice(name="a", start=1, end=2, shape=(1,)),
+        ],
+        fisher_eigenvalues=torch.tensor([4.0, 1.0]),
+        fisher_eigenvectors=torch.eye(2),
+        fisher_diagonal=torch.tensor([4.0, 1.0]),
+        module_scores={"b": 4.0, "a": 1.0},
+        top_weight_indices=torch.tensor([0, 1]),
+        top_weight_scores=torch.tensor([4.0, 1.0]),
+    )
+    reg = AlignGuardLoRARegularizer(
+        model,
+        subspace=subspace,
+        parameter_names=["b", "a"],
+        config=AlignGuardConfig(lambda_a=1.0, lambda_t=0.0, lambda_nc=0.0),
+    )
+
+    with torch.no_grad():
+        model.a.add_(1.0)
+
+    out = reg.regularized_loss(torch.tensor(0.0))
+    # For delta=[b,a]=[0,1], penalty is 4*0^2 + 1*1^2 = 1.
+    assert float(out.alignment_penalty.item()) == pytest.approx(1.0, rel=1e-6, abs=1e-6)

@@ -128,7 +128,11 @@ class AlignGuardLoRARegularizer:
         self.config = config or AlignGuardConfig()
         _validate_alignguard_config(self.config)
 
-        names, params = named_trainable_parameters(model, include_names=parameter_names)
+        names, params = named_trainable_parameters(
+            model,
+            include_names=parameter_names,
+            strict=True,
+        )
         if not params:
             raise ValueError("No trainable parameters selected for AlignGuard regularization.")
 
