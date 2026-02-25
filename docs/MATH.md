@@ -244,12 +244,13 @@ $$
 $$
 
 where:
-- $L_{\mathrm{collapse}}$ is `collapse_loss_threshold`.
-- $\phi_{\mathrm{refine}}$ is `adaptive_curvature_trigger_fraction`.
-- $s_{\mathrm{collapse}}$ is `collapse_step`.
-- $s_{\max}$ is `max_steps`.
-- $b_{\mathrm{curv}}$ is `curvature.max_batches`.
-- $b_{\mathrm{adapt}}$ is `adaptive_curvature_max_batches`.
+
+- `L_collapse` is `collapse_loss_threshold`.
+- `phi_refine` is `adaptive_curvature_trigger_fraction`.
+- `s_collapse` is `collapse_step`.
+- `s_max` is `max_steps`.
+- `b_curv` is `curvature.max_batches`.
+- `b_adapt` is `adaptive_curvature_max_batches`.
 
 ## 9. Trust-Region Warning Logic
 
