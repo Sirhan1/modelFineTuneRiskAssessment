@@ -40,6 +40,15 @@ def select_parameter_names_for_mode(
     if mode == "full":
         return filtered
 
+    # If caller explicitly passed an allowlist, trust it in LoRA mode and skip name heuristics.
+    if include_names is not None:
+        if not filtered and require_lora_match:
+            raise ValueError(
+                "PipelineConfig.mode='lora' but no trainable parameters matched fisher.parameter_names. "
+                "Ensure your allowlist points to trainable adapter parameters."
+            )
+        return filtered
+
     lora_names = [
         name for name in filtered if any(marker.lower() in name.lower() for marker in lora_name_markers)
     ]
@@ -68,7 +77,7 @@ def build_parameter_slices(
 ) -> List[ParameterSlice]:
     slices: List[ParameterSlice] = []
     start = 0
-    for name, param in zip(names, params):
+    for name, param in zip(names, params, strict=True):
         width = param.numel()
         end = start + width
         slices.append(ParameterSlice(name=name, start=start, end=end, shape=tuple(param.shape)))
@@ -82,8 +91,14 @@ def flatten_tensors(
     *,
     device: torch.device | None = None,
 ) -> torch.Tensor:
+    if len(tensors) != len(reference_params):
+        raise ValueError(
+            "flatten_tensors requires tensors and reference_params to have the same length: "
+            f"got {len(tensors)} and {len(reference_params)}."
+        )
+
     chunks: List[torch.Tensor] = []
-    for tensor, param in zip(tensors, reference_params):
+    for tensor, param in zip(tensors, reference_params, strict=True):
         if tensor is None:
             chunk = torch.zeros(param.numel(), dtype=param.dtype, device=param.device)
         else:
@@ -113,17 +128,28 @@ def move_to_device(batch: Any, device: torch.device) -> Any:
 
 def batch_size(batch: Any) -> int:
     if torch.is_tensor(batch):
+        if batch.ndim == 0:
+            raise ValueError("Cannot infer batch size from scalar tensor.")
         return int(batch.shape[0])
     if isinstance(batch, dict):
         for value in batch.values():
-            return batch_size(value)
+            try:
+                return batch_size(value)
+            except ValueError:
+                continue
     if isinstance(batch, (tuple, list)) and batch:
-        return batch_size(batch[0])
+        for value in batch:
+            try:
+                return batch_size(value)
+            except ValueError:
+                continue
     raise ValueError("Cannot infer batch size from batch object.")
 
 
 def slice_batch(batch: Any, index: int) -> Any:
     if torch.is_tensor(batch):
+        if batch.ndim == 0:
+            return batch
         return batch[index : index + 1]
     if isinstance(batch, dict):
         return {k: slice_batch(v, index) for k, v in batch.items()}

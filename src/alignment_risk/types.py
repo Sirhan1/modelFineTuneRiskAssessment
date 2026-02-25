@@ -46,10 +46,12 @@ class CurvatureCouplingResult:
 @dataclass
 class SafetyForecast:
     steps: np.ndarray
+    times: np.ndarray
     projected_drift: np.ndarray
     quartic_lower_bound: np.ndarray
     estimated_loss: np.ndarray
     collapse_step: Optional[int]
+    collapse_time: Optional[float]
 
 
 @dataclass

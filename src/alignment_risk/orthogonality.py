@@ -22,8 +22,8 @@ def initial_risk_from_update(
     projected_ratio is ||P_M(delta)|| / ||delta||, which is the cosine between
     update direction and the closest direction inside subspace M.
     """
-    update = update_vector.detach().cpu()
-    basis = subspace.fisher_eigenvectors
+    basis = subspace.fisher_eigenvectors.detach().cpu()
+    update = update_vector.detach().to(device=basis.device, dtype=basis.dtype)
 
     update_norm = float(update.norm().item())
     if update_norm == 0.0:

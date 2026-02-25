@@ -5,6 +5,7 @@ PYTEST=$(VENV)/bin/pytest
 RUFF=$(VENV)/bin/ruff
 MYPY=$(VENV)/bin/mypy
 TWINE=$(VENV)/bin/twine
+BUILD_LOCK=.build.lock
 
 .PHONY: setup install test demo lint typecheck build check-dist clean
 
@@ -25,7 +26,7 @@ demo:
 
 lint:
 	@if [ ! -x "$(PYTHON)" ]; then echo "Run 'make setup' first."; exit 1; fi
-	$(RUFF) check src tests
+	$(RUFF) check src tests examples
 
 typecheck:
 	@if [ ! -x "$(PYTHON)" ]; then echo "Run 'make setup' first."; exit 1; fi
@@ -33,7 +34,9 @@ typecheck:
 
 build:
 	@if [ ! -x "$(PYTHON)" ]; then echo "Run 'make setup' first."; exit 1; fi
-	rm -rf build dist
+	@while ! mkdir $(BUILD_LOCK) 2>/dev/null; do sleep 0.1; done; \
+	trap 'rmdir $(BUILD_LOCK)' EXIT INT TERM; \
+	rm -rf build dist; \
 	$(PYTHON) -m build
 
 check-dist: build
@@ -42,5 +45,6 @@ check-dist: build
 
 clean:
 	rm -rf $(VENV) .pytest_cache .ruff_cache .mypy_cache artifacts build dist
+	rm -rf $(BUILD_LOCK)
 	find . -type d -name "__pycache__" -prune -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete

@@ -15,6 +15,7 @@ LossFn = Callable[[torch.nn.Module, object], torch.Tensor]
 class CurvatureConfig:
     device: str = "auto"
     max_batches: int = 1
+    force_eval: bool = True
 
 
 class CurvatureCouplingAnalyzer:
@@ -29,16 +30,27 @@ class CurvatureCouplingAnalyzer:
         dataloader: Iterable[object],
         loss_fn: LossFn,
         subspace: SensitivitySubspace,
+        *,
+        max_batches_override: int | None = None,
     ) -> CurvatureCouplingResult:
         device = resolve_device(self.config.device)
         model = model.to(device)
+        max_batches = max_batches_override if max_batches_override is not None else self.config.max_batches
 
         selected_names = [p.name for p in subspace.parameter_slices]
         _, params = named_trainable_parameters(model, include_names=selected_names)
         if not params:
             raise ValueError("No trainable parameters found for curvature analysis.")
 
-        loss = self._mean_loss(model, dataloader, loss_fn, device)
+        was_training = model.training
+        if self.config.force_eval:
+            model.eval()
+        try:
+            loss = self._mean_loss(model, dataloader, loss_fn, device, max_batches=max_batches)
+        finally:
+            if self.config.force_eval and was_training:
+                model.train()
+
         grads = torch.autograd.grad(loss, params, create_graph=True, allow_unused=True)
         g = flatten_tensors(grads, params)
 
@@ -46,14 +58,14 @@ class CurvatureCouplingAnalyzer:
         dot = torch.dot(g, g.detach())
         hvp = torch.autograd.grad(dot, params, allow_unused=True)
 
-        g_vec = g.detach().cpu()
-        a_vec = flatten_tensors(hvp, params).detach().cpu()
+        basis = subspace.fisher_eigenvectors.detach().cpu()
+        eigvals = torch.clamp(subspace.fisher_eigenvalues.detach().cpu(), min=0.0).to(dtype=basis.dtype)
 
-        basis = subspace.fisher_eigenvectors
-        eigvals = torch.clamp(subspace.fisher_eigenvalues, min=0.0)
+        g_vec = g.detach().to(device=basis.device, dtype=basis.dtype)
+        a_vec = flatten_tensors(hvp, params).detach().to(device=basis.device, dtype=basis.dtype)
 
         g_coeff = basis.T @ g_vec
-        epsilon_hat = float(g_coeff.norm().item())
+        epsilon_hat = float(torch.sqrt(torch.sum(eigvals * (g_coeff ** 2))).item())
 
         a_coeff = basis.T @ a_vec
         projected_a = basis @ a_coeff
@@ -74,11 +86,13 @@ class CurvatureCouplingAnalyzer:
         dataloader: Iterable[object],
         loss_fn: LossFn,
         device: torch.device,
+        *,
+        max_batches: int,
     ) -> torch.Tensor:
         total = None
         count = 0
         for i, batch in enumerate(dataloader):
-            if i >= self.config.max_batches:
+            if i >= max_batches:
                 break
             batch = move_to_device(batch, device)
             loss = loss_fn(model, batch)

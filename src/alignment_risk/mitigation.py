@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Sequence
+from typing import Literal, Sequence, cast
 
 import torch
 
@@ -78,7 +78,7 @@ def geodesic_overlap_penalty(
 ) -> torch.Tensor:
     numerator = torch.dot(delta_a, delta_t) ** 2
     denominator = (delta_a.norm() ** 2) * (delta_t.norm() ** 2) + eps
-    return numerator / denominator
+    return cast(torch.Tensor, numerator / denominator)
 
 
 class AlignGuardLoRARegularizer:

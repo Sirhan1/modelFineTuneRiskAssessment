@@ -43,3 +43,14 @@ def test_lora_mode_can_be_non_strict() -> None:
     model = _ModelNoLora()
     names = select_parameter_names_for_mode(model, mode="lora", require_lora_match=False)
     assert names == []
+
+
+def test_lora_mode_respects_explicit_allowlist_without_name_markers() -> None:
+    model = _ModelNoLora()
+    names = select_parameter_names_for_mode(
+        model,
+        mode="lora",
+        include_names=["base.weight"],
+        require_lora_match=True,
+    )
+    assert names == ["base.weight"]

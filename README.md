@@ -5,15 +5,27 @@ It estimates whether a fine-tuning trajectory is likely to drift into safety-sen
 
 ## Installation
 
+Install from PyPI:
+
 ```bash
 pip install alignment-risk
 ```
 
-For local development on Apple Silicon:
+For local development:
+
+Apple Silicon convenience setup:
 
 ```bash
 make setup
 source .venv/bin/activate
+```
+
+Manual setup (cross-platform):
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 ```
 
 ## Quickstart
@@ -21,6 +33,7 @@ source .venv/bin/activate
 Run the included synthetic demo:
 
 ```bash
+alignment-risk --help
 alignment-risk demo --output-dir artifacts
 alignment-risk demo --mode lora --output-dir artifacts
 ```
@@ -92,6 +105,47 @@ Call `mitigator.reset_reference()` when you want to re-anchor regularization to 
 3. Curvature coupling risk (second-order directional drift).
 4. Quartic-style stability forecast and collapse-step warning.
 
+## Fisher Performance Options
+
+`FisherConfig` now supports user-selectable speed/accuracy tradeoffs:
+
+- `gradient_collection`: `"loop"` (default), `"auto"`, or `"vmap"`.
+- `subspace_method`: `"svd"` (exact), `"randomized_svd"` (faster approximate), or `"diag_topk"` (fastest rough approximation).
+- `vmap_chunk_size`: optional chunking for lower memory with `vmap`.
+- `target_explained_variance`: auto-select Fisher rank by retained energy (default `0.9`) within `top_rank`.
+
+When using `gradient_collection="auto"`, the analyzer runs a small loop-vs-vmap
+parity probe and falls back to loop if the gradients disagree.
+
+Example:
+
+```python
+from alignment_risk import AlignmentRiskPipeline, PipelineConfig
+
+config = PipelineConfig()
+config.fisher.gradient_collection = "vmap"
+config.fisher.subspace_method = "randomized_svd"
+config.fisher.vmap_chunk_size = 16
+```
+
+## Reliability Defaults
+
+The pipeline now enables several mitigations by default without requiring extra user inputs:
+
+- Adaptive curvature refinement on borderline forecasts (re-runs curvature on more batches).
+- Consistent eval-mode gradient probes for Fisher, initial update estimate, and curvature (dropout/BN consistency).
+- More robust forecast curvature floor via a stable low-quantile Fisher eigenvalue.
+- LoRA mode honors explicit `fisher.parameter_names` allowlists (does not require name-marker matches).
+
+## Theory sources
+
+This implementation is sourced from two papers:
+
+- *The Geometry of Alignment Collapse: When Fine-Tuning Breaks Safety* (arXiv:2602.15799v1).
+- *AlignGuard-LoRA: Alignment-Preserving Fine-Tuning via Fisher-Guided Decomposition and Riemannian-Geodesic Collision Regularization* (arXiv:2508.02079v1).
+
+See `docs/SOURCES.md` for a module-by-module mapping from repository code to paper sections/pages.
+
 ## Repository layout
 
 - `src/alignment_risk/`: package source code.
@@ -100,9 +154,10 @@ Call `mitigator.reset_reference()` when you want to re-anchor regularization to 
 - `scripts/`: setup and project automation scripts.
 - `pyproject.toml`: packaging metadata and build config.
 
-## Development commands
+## Development
 
 ```bash
+make install
 make test
 make lint
 make typecheck
@@ -110,10 +165,14 @@ make build
 make check-dist
 ```
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution workflow details.
+
+## Documentation map
+
+- `CONTRIBUTING.md`: local dev and contribution checklist.
+- `docs/PUBLISHING.md`: release and publishing guide.
+- `docs/SOURCES.md`: source-to-paper mapping and derivation notes.
+
 ## Publishing workflow (when ready)
 
-1. Bump version in `src/alignment_risk/__about__.py`.
-2. Run quality checks: `make test lint typecheck`.
-3. Build artifacts: `make build`.
-4. Validate artifacts: `make check-dist`.
-5. Upload with Twine to TestPyPI/PyPI.
+Follow `docs/PUBLISHING.md` end-to-end.

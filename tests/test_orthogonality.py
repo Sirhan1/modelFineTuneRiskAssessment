@@ -29,3 +29,10 @@ def test_initial_risk_ratio() -> None:
     out = initial_risk_from_update(update, subspace, orthogonality_threshold=0.8)
     assert 0.0 < out.projected_ratio < 1.0
     assert out.trigger_curvature_check
+
+
+def test_initial_risk_handles_mixed_update_and_basis_dtypes() -> None:
+    subspace = _dummy_subspace()
+    update = torch.tensor([1.0, 0.0, 1.0], dtype=torch.float16)
+    out = initial_risk_from_update(update, subspace, orthogonality_threshold=0.8)
+    assert 0.0 <= out.projected_ratio <= 1.0

@@ -9,13 +9,12 @@
 ## Release steps
 
 1. Update `version` in `pyproject.toml` and `__version__` in `src/alignment_risk/__about__.py`.
-2. Run:
+2. Run quality checks:
    - `make test`
    - `make lint`
    - `make typecheck`
-3. Build and verify:
-   - `make build`
-   - `make check-dist`
+3. Build and verify distributions:
+   - `make check-dist` (this target runs `make build` first)
 4. Upload to TestPyPI:
    - `python -m twine upload --repository testpypi dist/*`
 5. Validate install from TestPyPI.

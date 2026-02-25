@@ -52,12 +52,19 @@ def plot_safety_forecast(forecast: SafetyForecast, output_path: str | Path) -> N
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
 
+    x = forecast.times
     plt.figure(figsize=(8, 4))
-    plt.plot(forecast.steps, forecast.estimated_loss, label="Estimated Safety Decay")
-    plt.plot(forecast.steps, forecast.quartic_lower_bound, label="Quartic Asymptote", linestyle="--")
+    plt.plot(x, forecast.estimated_loss, label="Estimated Safety Decay")
+    plt.plot(x, forecast.quartic_lower_bound, label="Quartic Asymptote", linestyle="--")
     if forecast.collapse_step is not None:
-        plt.axvline(forecast.collapse_step, color="red", linestyle=":", label=f"Collapse step {forecast.collapse_step}")
-    plt.xlabel("Fine-tuning step")
+        assert forecast.collapse_time is not None
+        plt.axvline(
+            forecast.collapse_time,
+            color="red",
+            linestyle=":",
+            label=f"Collapse step {forecast.collapse_step}",
+        )
+    plt.xlabel("Fine-tuning time")
     plt.ylabel("Predicted alignment loss")
     plt.title("AIC Stability Forecast")
     plt.legend()

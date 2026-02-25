@@ -26,7 +26,11 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
-    if args.command in (None, "demo"):
+    if args.command is None:
+        parser.print_help()
+        return
+
+    if args.command == "demo":
         output_dir = getattr(args, "output_dir", "artifacts")
         mode = cast(str, getattr(args, "mode", "full"))
         run_demo(output_dir=output_dir, mode=cast(Literal["full", "lora"], mode))
