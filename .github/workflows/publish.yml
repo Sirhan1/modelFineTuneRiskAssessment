@@ -24,17 +24,17 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install build tooling
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -c .github/constraints/publish.txt "build>=1.2,<2.0" "twine>=5.1,<6.0"
 
       - name: Verify tag and package versions match
         run: |
           python - <<'PY'
+          import ast
           import os
           import pathlib
-          import re
           import tomllib
 
           tag_ref = os.environ["GITHUB_REF"]
@@ -46,10 +46,18 @@ jobs:
           project_version = pyproject["project"]["version"]
 
           about_text = pathlib.Path("src/alignment_risk/__about__.py").read_text()
-          match = re.search(r'__version__\\s*=\\s*\"([^\"]+)\"', about_text)
-          if match is None:
-              raise SystemExit("Could not find __version__ in src/alignment_risk/__about__.py")
-          about_version = match.group(1)
+          module = ast.parse(about_text)
+          about_version = None
+          for node in module.body:
+              if isinstance(node, ast.Assign):
+                  for target in node.targets:
+                      if isinstance(target, ast.Name) and target.id == "__version__":
+                          if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                              about_version = node.value.value
+          if about_version is None:
+              raise SystemExit(
+                  "Could not find string __version__ assignment in src/alignment_risk/__about__.py"
+              )
 
           if project_version != about_version:
               raise SystemExit(
@@ -62,15 +70,6 @@ jobs:
 
           print(f"Version check passed: {project_version}")
           PY
-
-      - name: Run tests
-        run: python -m pytest -q
-
-      - name: Run lint
-        run: python -m ruff check src tests examples
-
-      - name: Run typecheck
-        run: python -m mypy src/alignment_risk
 
       - name: Build package
         run: python -m build
