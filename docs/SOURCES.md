@@ -11,6 +11,7 @@ This repository's methods are grounded in two papers (citation keys follow
    - Abstract page: `https://arxiv.org/abs/2508.02079`
 
 This is an implementation-oriented toolkit, not a line-by-line reproduction of either paper. The links below are the closest source sections for each module.
+For full equations and concrete runtime decision logic, see `docs/MATH.md`.
 
 ## Module to source mapping
 

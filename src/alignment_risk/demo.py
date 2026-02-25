@@ -34,6 +34,10 @@ def _set_lora_only_trainable(model: torch.nn.Module) -> None:
             param.requires_grad = False
 
 
+def _fmt_sci(value: float, digits: int = 6) -> str:
+    return f"{value:.{digits}e}"
+
+
 def run_demo(output_dir: str = "artifacts", *, mode: Literal["full", "lora"] = "full") -> None:
     torch.manual_seed(7)
     device = resolve_device("auto")
@@ -90,13 +94,20 @@ def run_demo(output_dir: str = "artifacts", *, mode: Literal["full", "lora"] = "
     print(f"Device: {device}")
     print(f"Mode: {mode}")
     print(f"Initial overlap cosine: {report.initial_risk.cosine_to_subspace:.4f}")
-    print(f"Curvature coupling gamma_hat: {report.curvature.gamma_hat:.4f}")
+    print(f"Curvature coupling gamma_hat: {_fmt_sci(report.curvature.gamma_hat)}")
+    print(f"Curvature coupling epsilon_hat: {_fmt_sci(report.curvature.epsilon_hat)}")
+    print(f"Acceleration norm: {_fmt_sci(report.curvature.acceleration_norm)}")
+    print(
+        "Projected acceleration norm: "
+        f"{_fmt_sci(report.curvature.projected_acceleration_norm)}"
+    )
     print(report.warning)
     print("Top-10 sensitive weights:")
     for row in sensitivity_rows(report.subspace, top_k=10):
+        score = float(row["score"])
         print(
             f"  #{row['rank']}: {row['parameter']}[{row['parameter_offset']}]"
-            f" score={row['score']:.6f}"
+            f" score={score:.6e}"
         )
 
 

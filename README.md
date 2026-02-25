@@ -145,6 +145,7 @@ This implementation is grounded in the following primary references:
 - **[ALIGNGUARD-2025]** Das, Amitava, et al. (2025). *AlignGuard-LoRA: Alignment-Preserving Fine-Tuning via Fisher-Guided Decomposition and Riemannian-Geodesic Collision Regularization*. arXiv:2508.02079v1. PDF: [https://arxiv.org/pdf/2508.02079](https://arxiv.org/pdf/2508.02079)
 
 See `docs/SOURCES.md` for module-by-module mapping from repository code to sections/pages in these papers.
+See `docs/MATH.md` for explicit equations and decision logic aligned to the implementation.
 
 ## Repository layout
 
@@ -173,6 +174,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution workflow details.
 - `docs/PUBLISHING.md`: release and publishing guide.
 - `docs/CITATIONS.md`: canonical references and starter BibTeX entries.
 - `docs/SOURCES.md`: source-to-paper mapping and derivation notes.
+- `docs/MATH.md`: explicit math and algorithm/decision logic used by the code.
 
 ## Publishing workflow (when ready)
 

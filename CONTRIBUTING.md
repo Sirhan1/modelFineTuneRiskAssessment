@@ -37,3 +37,4 @@ make typecheck
 - Keep public API exports in `src/alignment_risk/__init__.py` stable.
 - Add tests for any new public behavior.
 - Keep README/docs examples in sync with CLI and config defaults.
+- Keep `docs/MATH.md` and `docs/SOURCES.md` updated when math or decision logic changes.
