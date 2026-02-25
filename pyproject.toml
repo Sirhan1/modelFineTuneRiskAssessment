@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "alignment-risk"
-version = "0.1.0"
+version = "0.1.2"
 description = "Template toolkit for AIC-based alignment collapse diagnostics"
 readme = "README.md"
 authors = [{name = "Mohammed Talat"}]
