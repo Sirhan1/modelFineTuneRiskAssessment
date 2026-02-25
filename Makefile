@@ -7,7 +7,7 @@ MYPY=$(VENV)/bin/mypy
 TWINE=$(VENV)/bin/twine
 BUILD_LOCK=.build.lock
 
-.PHONY: setup install test demo lint typecheck build check-dist clean
+.PHONY: setup install test demo docs-build lint typecheck build check-dist clean
 
 setup:
 	./scripts/setup_macos_apple_silicon.sh
@@ -23,6 +23,10 @@ test:
 demo:
 	@if [ ! -x "$(PYTHON)" ]; then echo "Run 'make setup' first."; exit 1; fi
 	$(VENV)/bin/alignment-risk demo --output-dir artifacts
+
+docs-build:
+	@if [ ! -x "$(PYTHON)" ]; then echo "Run 'make setup' first."; exit 1; fi
+	$(VENV)/bin/mkdocs build --strict
 
 lint:
 	@if [ ! -x "$(PYTHON)" ]; then echo "Run 'make setup' first."; exit 1; fi

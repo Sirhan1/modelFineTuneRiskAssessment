@@ -1,0 +1,16 @@
+site_name: alignment-risk Documentation
+site_description: Pre-flight alignment risk diagnostics for fine-tuning.
+site_url: https://sirhan1.github.io/modelFineTuneRiskAssessment/
+repo_url: https://github.com/Sirhan1/modelFineTuneRiskAssessment
+repo_name: Sirhan1/modelFineTuneRiskAssessment
+docs_dir: docs
+
+theme:
+  name: mkdocs
+
+nav:
+  - Home: index.md
+  - Math and Logic: MATH.md
+  - Source Mapping: SOURCES.md
+  - Citations: CITATIONS.md
+  - Publishing: PUBLISHING.md
