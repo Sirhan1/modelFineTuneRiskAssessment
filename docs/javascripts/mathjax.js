@@ -6,10 +6,19 @@ window.MathJax = {
     processEnvironments: true,
   },
   options: {
-    skipHtmlTags: ["script", "noscript", "style", "textarea", "pre"],
+    ignoreHtmlClass: ".*|",
+    processHtmlClass: "arithmatex",
   },
 };
 
-document$.subscribe(() => {
-  MathJax.typesetPromise();
-});
+function typesetMath() {
+  if (window.MathJax && typeof window.MathJax.typesetPromise === "function") {
+    window.MathJax.typesetPromise();
+  }
+}
+
+if (window.document$ && typeof window.document$.subscribe === "function") {
+  window.document$.subscribe(typesetMath);
+}
+
+window.addEventListener("load", typesetMath);

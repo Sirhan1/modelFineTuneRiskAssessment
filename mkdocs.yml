@@ -18,6 +18,7 @@ nav:
 markdown_extensions:
   - pymdownx.arithmatex:
       generic: true
+      smart_dollar: true
   - pymdownx.superfences
   - pymdownx.highlight
   - toc:
