@@ -128,7 +128,7 @@ def test_pipeline_forecast_uses_lr_scaled_curvature_terms(monkeypatch: pytest.Mo
         fine_tune_loss_fn=lambda m, b: torch.tensor(0.0),
     )
 
-    assert captured["lambda_min"] == pytest.approx(1.2, rel=1e-6, abs=1e-6)
+    assert captured["lambda_min"] == pytest.approx(1.0, rel=1e-6, abs=1e-6)
     assert captured["epsilon"] == pytest.approx(0.2 * 5.0, rel=1e-6, abs=1e-6)
     assert captured["gamma"] == pytest.approx((0.2**2) * 7.0, rel=1e-6, abs=1e-6)
 

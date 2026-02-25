@@ -171,7 +171,9 @@ class AlignmentRiskPipeline:
         eigvals = torch.clamp(subspace.fisher_eigenvalues, min=0.0)
         if eigvals.numel() == 0:
             return 0.0
-        return float(torch.quantile(eigvals, q=0.1).item())
+        # Use a true lower-quantile floor so the "lambda_min" proxy never exceeds
+        # the smallest retained eigenvalue for small-rank spectra.
+        return float(torch.quantile(eigvals, q=0.1, interpolation="lower").item())
 
     def _should_refine_curvature(self, forecast: SafetyForecast) -> bool:
         if not self.config.adaptive_curvature_refine:
